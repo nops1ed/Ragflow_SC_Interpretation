@@ -192,10 +192,42 @@ def main():
 4. 最后调用 ELASTICSEARCH.bulk() 写入 ElasticSearch
 
 之前谈到文档的解析是其 RagFlow 的核心亮点，build()方法处理文档并将其分块。它从 MINIO 存储中获取文档的二进制数据，使用指定的解析器将文档分块，并将结果存储在 MINIO 中。下面看一下build()方法的具体逻辑：
+
 ```c
-
+// 省略的异常处理和一些其他信息，保留了代码骨架，方便阅读
+def build(row):
+    chunker = FACTORY[row["parser_id"].lower()]
+    bucket, name = File2DocumentService.get_minio_address(doc_id=row["doc_id"])
+    binary = get_minio_binary(bucket, name)
+    cks = chunker.chunk(row["name"], binary=binary, from_page=row["from_page"],
+                        to_page=row["to_page"], lang=row["language"], callback=callback,
+                        kb_id=row["kb_id"], parser_config=row["parser_config"], tenant_id=row["tenant_id"])
 ```
-
+这里谈到的解析器以**parser_id**指定，追溯到原本的解析器组：
+```c
+FACTORY = {
+    "general": naive,
+    ParserType.NAIVE.value: naive,
+    ParserType.PAPER.value: paper,
+    ParserType.BOOK.value: book,
+    ParserType.PRESENTATION.value: presentation,
+    ParserType.MANUAL.value: manual,
+    ParserType.LAWS.value: laws,
+    ParserType.QA.value: qa,
+    ParserType.TABLE.value: table,
+    ParserType.RESUME.value: resume,
+    ParserType.PICTURE.value: picture,
+    ParserType.ONE.value: one,
+    ParserType.AUDIO.value: audio,
+    ParserType.EMAIL.value: email,
+    ParserType.KG.value: knowledge_graph
+}
+```
+其实现位于**RAGFLOW_HOME/rag/app**下，以naive为例，其支持**docx, pdf, excel, txt**等主流类型的文档解析，我们以**pdf**格式为例：
+```c
+class Pdf(PdfParser):
+```
+该解析器继承自**RAGFLOW_HOME/deepdoc/parser/pdf_parser.py**中的*RAGFlowPdfParser*，pdf打开使用接口[pypdf](https://pypi.org/project/pypdf/#description)
 
 
 
